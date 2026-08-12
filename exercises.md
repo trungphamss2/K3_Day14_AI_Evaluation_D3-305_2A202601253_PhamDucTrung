@@ -268,6 +268,8 @@ hay generation?
 > định dạng câu trả lời bám sát intent và bổ sung semantic/judge metric để hiệu chỉnh
 > các adversarial cases, thay vì chỉ thay retriever.
 
+> **Ghi chú thay đổi provider:** Benchmark được chạy bằng OpenRouter qua OpenAI-compatible API (`https://openrouter.ai/api/v1`), sử dụng model router miễn phí `openrouter/free` thay cho OpenAI trực tiếp.
+
 ### Exercise 3.3 — LLM-as-a-Judge Rubric Design
 
 Thiết kế rubric domain-specific cho Student Services. Mỗi mức phải đủ cụ thể để
