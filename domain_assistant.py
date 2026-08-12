@@ -243,27 +243,47 @@ class TextGenerator(Protocol):
 
 
 class OpenAIGenerator:
-    def __init__(self, max_output_tokens: int = 300) -> None:
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
-        self.model = os.getenv("OPENAI_MODEL", "").strip()
+    def __init__(self, max_output_tokens: int = 600) -> None:
+        api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+        base_url = os.getenv(
+            "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+        ).strip()
+        self.model = os.getenv("OPENROUTER_MODEL", "").strip()
         if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is missing from .env")
+            raise RuntimeError("OPENROUTER_API_KEY is missing from .env")
+        if not base_url:
+            raise RuntimeError("OPENROUTER_BASE_URL is missing from .env")
         if not self.model:
-            raise RuntimeError("OPENAI_MODEL is missing from .env")
-        self.client = OpenAI(api_key=api_key)
+            raise RuntimeError("OPENROUTER_MODEL is missing from .env")
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            max_retries=0,
+            timeout=60.0,
+        )
         self.max_output_tokens = max_output_tokens
 
     def generate(self, prompt: str) -> str:
-        response = self.client.responses.create(
-            model=self.model,
-            input=prompt,
-            temperature=0,
-            max_output_tokens=self.max_output_tokens,
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0,
+                    max_tokens=self.max_output_tokens,
+                )
+                answer = (response.choices[0].message.content or "").strip()
+                if answer:
+                    return answer
+                last_error = RuntimeError("OpenRouter returned an empty answer")
+            except OpenAIError as exc:
+                last_error = exc
+            if attempt < 2:
+                time.sleep(attempt + 1)
+        raise RuntimeError(
+            f"OpenRouter generation failed after 3 attempts: {last_error}"
         )
-        answer = response.output_text.strip()
-        if not answer:
-            raise RuntimeError("OpenAI returned an empty answer")
-        return answer
 
 
 @dataclass(frozen=True)
